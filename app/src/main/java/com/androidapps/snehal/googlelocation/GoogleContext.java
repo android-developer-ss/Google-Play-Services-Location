@@ -7,8 +7,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Resources;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -24,13 +22,12 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.DetectedActivity;
-import com.google.android.gms.location.LocationServices;
 
 import java.util.ArrayList;
 
 public class GoogleContext extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener ,
-        ResultCallback< Status>{
+        GoogleApiClient.OnConnectionFailedListener,
+        ResultCallback<Status> {
 
     //----------------------------------------------------------------------------------------------
     // Member variable Declarations
@@ -39,7 +36,7 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
     private static Button mRemoveUpdatesButton;
     protected GoogleApiClient mGoogleApiClient;
     protected ActivityDetectionBroadcastReceiver mBroadcastReceiver;
-    protected static final String TAG="activity";
+    protected static final String TAG = "activity";
 
     //----------------------------------------------------------------------------------------------
     @Override
@@ -56,60 +53,69 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
         mBroadcastReceiver = new ActivityDetectionBroadcastReceiver();
         buildGoogleApiClient();
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+//        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+//        fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+//                        .setAction("Action", null).show();
+//            }
+//        });
+//        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
     @Override
-    protected void onStart(){
+    protected void onStart() {
         super.onStart();
         mGoogleApiClient.connect();
     }
+
     @Override
-    protected void onStop(){
+    protected void onStop() {
         super.onStop();
         mGoogleApiClient.disconnect();
     }
+
     @Override
-    protected void onPause(){
+    protected void onPause() {
         //Unregister the broadcast receiver that was registeres during onResume
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mBroadcastReceiver);
         super.onPause();
     }
+
     @Override
-    protected void onResume(){
+    protected void onResume() {
         super.onResume();
         LocalBroadcastManager.getInstance(this).registerReceiver(mBroadcastReceiver, new IntentFilter(Constants.BROADCAST_ACTION));
     }
 
     public void onResult(Status status) {
         if (status.isSuccess()) {
-            Log.e(TAG, "Successfully added activity detection.");
+            Log.i(TAG, "Successfully added activity detection.");
 
         } else {
             Log.e(TAG, "Error adding or removing activity detection: " + status.getStatusMessage());
         }
     }
+
     /***********************************************************************************************
      * Build Google API Client
      **********************************************************************************************/
-    private void buildGoogleApiClient() {
+    protected synchronized void buildGoogleApiClient() {
         // GoogleApiClient.Builder addApi - Specify which Apis are requested by your app.
         // GoogleApiClient.Builder addConnectionCallbacks- Registers a listener to receive connection
         // events from this GoogleApiClient.
         // GoogleApiClient.Builder addOnConnectionFailedListener - Adds a listener to register to
         // receive connection failed events from this GoogleApiClient
+//        mGoogleApiClient = new GoogleApiClient.Builder(this)
+//                .addApi(LocationServices.API)
+//                .addConnectionCallbacks(this)
+//                .addOnConnectionFailedListener(this)
+//                .build();
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
                 .addConnectionCallbacks(this)
                 .addOnConnectionFailedListener(this)
+                .addApi(ActivityRecognition.API)
                 .build();
     }
 
@@ -120,12 +126,15 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
      **********************************************************************************************/
     @Override
     public void onConnected(Bundle bundle) {
-
+        Log.i(TAG, "Connected to GoogleApiClient");
     }
 
     @Override
     public void onConnectionSuspended(int i) {
-
+        // The connection to Google Play services was lost for some reason. We call connect() to
+        // attempt to re-establish the connection.
+        Log.i(TAG, "Connection suspended");
+        mGoogleApiClient.connect();
     }
 
     /***********************************************************************************************
@@ -140,11 +149,12 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
      **********************************************************************************************/
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-
+        // Refer to the javadoc for ConnectionResult to see what error codes might be returned in
+        // onConnectionFailed.
+        Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = " + connectionResult.getErrorCode());
     }
 
     /***********************************************************************************************
-     *
      * @param detectedActivityType
      * @return
      **********************************************************************************************/
@@ -168,7 +178,7 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
             case DetectedActivity.WALKING:
                 return resources.getString(R.string.walking);
             default:
-                return resources.getString(R.string.unidentifiable_activity);
+                return resources.getString(R.string.unidentifiable_activity, detectedActivityType);
         }
     }
 
@@ -190,22 +200,32 @@ public class GoogleContext extends AppCompatActivity implements GoogleApiClient.
         }
     }
 
-    public void requestActivityUpdatesButtonHandler(View view){
-        if(!mGoogleApiClient.isConnected()){
-            Toast.makeText(this,getString(R.string.not_connected),Toast.LENGTH_SHORT).show();
+    public void requestActivityUpdatesButtonHandler(View view) {
+        if (!mGoogleApiClient.isConnected()) {
+            Toast.makeText(this, getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
+            return;
         }
         ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(
                 mGoogleApiClient,
                 Constants.DETECTION_INTERVAL_IN_MILISECONDS,
                 getActivityDetectionPendingIntent()
         ).setResultCallback(this);
-        mRequestUpdatesButton.setEnabled(false);
-        mRemoveUpdatesButton.setEnabled(true);
+//        mRequestUpdatesButton.setEnabled(false);
+//        mRemoveUpdatesButton.setEnabled(true);
 
     }
 
-    public void removeActivityUpdatesButtonHandler(View view){
-        ActivityRecognition.ActivityRecognitionApi.removeActivityUpdates(mGoogleApiClient, getActivityDetectionPendingIntent());
+    public void removeActivityUpdatesButtonHandler(View view) {
+        if (!mGoogleApiClient.isConnected()) {
+            Toast.makeText(this, getString(R.string.not_connected), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        // Remove all activity updates for the PendingIntent that was used to request activity
+        // updates.
+        ActivityRecognition.ActivityRecognitionApi.removeActivityUpdates(
+                mGoogleApiClient,
+                getActivityDetectionPendingIntent()
+        ).setResultCallback(this);
     }
 
     private PendingIntent getActivityDetectionPendingIntent() {
