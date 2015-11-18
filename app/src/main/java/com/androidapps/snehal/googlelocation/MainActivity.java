@@ -1,5 +1,6 @@
 package com.androidapps.snehal.googlelocation;
 
+import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
@@ -21,7 +22,9 @@ import com.google.android.gms.location.LocationServices;
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, LocationListener {
     private final String LOG_TAG = "SnehalGoogleLocation";
-    private TextView txtOutput;
+    private TextView mLatitudeText;
+    private TextView mLongitudeText;
+    private Location mLastLocation;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
 
@@ -45,8 +48,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addOnConnectionFailedListener(this)
                 .build();
 
-        //Handle for txtOutput from UI.
-        txtOutput = (TextView) findViewById(R.id.txtOutput);
+        //Handle for LatitudeText and LongitudeText from UI.
+        mLatitudeText = (TextView) findViewById(R.id.latitudeText);
+        mLongitudeText = (TextView) findViewById(R.id.longitudeText);
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -87,15 +91,25 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      **********************************************************************************************/
     @Override
     public void onConnected(Bundle bundle) {
-        mLocationRequest = new LocationRequest();
-        //PRIORITY_HIGH_ACCURACY This will return the finest location available.
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        //Update location every second.
-        mLocationRequest.setInterval(1000);
+//        mLocationRequest = new LocationRequest(); //LocationRequest.create();
+//        //PRIORITY_HIGH_ACCURACY This will return the finest location available.
+//        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+//        //Update location every second.
+//        mLocationRequest.setInterval(1000);
+//
+//        //Entry point to the fused location APIs.
+//        mLastLocation =LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest,
+//                (com.google.android.gms.location.LocationListener) this);
+//        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+//        if(mLastLocation!=null){
+//            mLongitudeText.setText(String.valueOf(mLastLocation.getLongitude()));
+//            mLatitudeText.setText(String.valueOf(mLastLocation.getLatitude()));
+//        }
 
-        //Entry point to the fused location APIs.
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest,
-                (com.google.android.gms.location.LocationListener) this);
+        mLocationRequest = LocationRequest.create();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(1000);
+        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,mLocationRequest,this);
 
     }
 
@@ -103,6 +117,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onConnectionSuspended(int i) {
 
     }
+
     /***********************************************************************************************
      * Methods to be implemented for GoogleApiClient.OnConnectionFailedListener Interface.
      * Provides callbacks for scenarios that result in a failed attempt to connect the client to the
@@ -124,12 +139,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      **********************************************************************************************/
     @Override
     public void onLocationChanged(Location location) {
-        String str;
+        //String str;
         Log.i(LOG_TAG, location.toString());
-        str = "LATITUDE: " + Double.toString(location.getLatitude()) +
-                " LONGITUDE: " +Double.toString(location.getLongitude()) +
-        " ALTITUDE: " +Double.toString(location.getAltitude());
-        txtOutput.setText(str);
+//        str = "LATITUDE: " + Double.toString(location.getLatitude()) +
+//                " LONGITUDE: " + Double.toString(location.getLongitude()) +
+//                " ALTITUDE: " + Double.toString(location.getAltitude());
+//        txtOutput.setText(str);
+        mLongitudeText.setText(String.valueOf(location.getLongitude()));
+        mLatitudeText.setText(String.valueOf(location.getLatitude()));
+
     }
 
     /***********************************************************************************************
@@ -145,7 +163,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onStop() {
         //Disconnect the client
-        mGoogleApiClient.disconnect();
+        if (mGoogleApiClient.isConnected())
+            mGoogleApiClient.disconnect();
         super.onStop();
+    }
+
+    /***********************************************************************************************
+     * Call callGoogleContext.
+     **********************************************************************************************/
+    public void callGoogleContext(View view){
+        Intent intent = new Intent(this,GoogleContext.class);
+        startActivity(intent);
     }
 }
